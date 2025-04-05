@@ -29,7 +29,8 @@ export interface AlgorithmStep {
   visitedNodes: string[];
   frontierNodes: string[];
   pathNodes: string[];
-  pathEdges: Array<{ source: string; target: string }>;
+  pathEdges: { source: string; target: string }[];
+  distances?: { [nodeId: string]: number };
 }
 
 export interface GraphState {

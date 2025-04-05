@@ -36,10 +36,16 @@ export const ControlPanel: React.FC = () => {
   } = useGraphStore();
 
   useEffect(() => {
-    if (stepsContainerRef.current) {
-      stepsContainerRef.current.scrollTop = stepsContainerRef.current.scrollHeight;
+    if (stepsContainerRef.current && currentStepIndex >= 0) {
+      const stepElements = stepsContainerRef.current.getElementsByClassName('step-item');
+      if (stepElements[currentStepIndex]) {
+        stepElements[currentStepIndex].scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }
     }
-  }, [algorithmSteps, currentStepIndex]);
+  }, [currentStepIndex]);
 
   const handleGenerateGraph = () => {
     clearGraph();
@@ -66,7 +72,7 @@ export const ControlPanel: React.FC = () => {
       {algorithmSteps.map((step, index) => (
         <div
           key={index}
-          className={`p-2 rounded ${
+          className={`step-item p-2 rounded ${
             index === 0
               ? 'bg-blue-200 dark:bg-blue-800'
               : index === currentStepIndex
@@ -79,6 +85,13 @@ export const ControlPanel: React.FC = () => {
             {step.visitedNodes.length > 0 && (
               <span className="ml-2">
                 Visited: {step.visitedNodes.map(id => id.replace('node-', '')).join(', ')}
+                {(selectedAlgorithm === 'DIJKSTRA' || selectedAlgorithm === 'ASTAR') && step.distances && (
+                  <span className="ml-1">
+                    (weights: {step.visitedNodes.map(id => 
+                      `${id.replace('node-', '')}=${step.distances[id]?.toFixed(1) || '∞'}`
+                    ).join(', ')})
+                  </span>
+                )}
               </span>
             )}
             {step.frontierNodes.length > 0 && (
@@ -88,7 +101,22 @@ export const ControlPanel: React.FC = () => {
             )}
             {step.pathNodes.length > 0 && (
               <span className="ml-2">
-                Path: {step.pathNodes.map(id => id.replace('node-', '')).join(' → ')}
+                Path: {step.pathNodes.map((id, i) => {
+                  if (i === step.pathNodes.length - 1) {
+                    return id.replace('node-', '');
+                  }
+                  const nextId = step.pathNodes[i + 1];
+                  const edge = graph.edges.find(e => 
+                    (e.source === id && e.target === nextId) || 
+                    (e.target === id && e.source === nextId)
+                  );
+                  return `${id.replace('node-', '')} (${edge?.weight || 0}) →`;
+                }).join(' ')}
+                {(selectedAlgorithm === 'DIJKSTRA' || selectedAlgorithm === 'ASTAR') && step.distances && (
+                  <span className="ml-2 font-semibold">
+                    Total Weight: {step.distances[step.pathNodes[step.pathNodes.length - 1]]?.toFixed(1) || 0}
+                  </span>
+                )}
               </span>
             )}
           </p>
