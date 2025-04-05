@@ -43,6 +43,7 @@ export interface GraphState {
   settingEndNode: boolean;
   algorithmSteps: AlgorithmStep[];
   currentStepIndex: number;
+  algorithmHistory: AlgorithmStep[];
   addNode: (x: number, y: number) => void;
   setStartNode: (id: string) => void;
   setEndNode: (id: string) => void;
@@ -52,7 +53,7 @@ export interface GraphState {
   toggleDirected: () => void;
   toggleWeighted: () => void;
   toggleDarkMode: () => void;
-  startAlgorithm: () => void;
+  startAlgorithm: () => Promise<void>;
   resetAlgorithm: () => void;
   updateNodeState: (id: string, updates: Partial<Node>) => void;
   updateEdgeState: (source: string, target: string, updates: Partial<Edge>) => void;

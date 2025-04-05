@@ -92,7 +92,14 @@ export const GraphCanvas: React.FC = () => {
   useEffect(() => {
     if (!svgRef.current) return;
 
-    const svg = d3.select(svgRef.current);
+    const width = svgRef.current.clientWidth;
+    const height = svgRef.current.clientHeight;
+
+    const svg = d3.select(svgRef.current)
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', [0, 0, width, height]);
+
     svg.selectAll('*').remove();
 
     // Add arrow marker for directed edges
@@ -108,7 +115,7 @@ export const GraphCanvas: React.FC = () => {
         .attr('markerHeight', 6)
         .append('path')
         .attr('d', 'M 0,-5 L 10,0 L 0,5')
-        .attr('fill', '#666');
+        .attr('fill', isDarkMode ? '#4b5563' : '#9ca3af');
     }
 
     // Create edge line for dragging
@@ -198,7 +205,7 @@ export const GraphCanvas: React.FC = () => {
     // Node dragging behavior
     const drag = d3.drag<SVGGElement, Node>()
       .on('start', (event: d3.D3DragEvent<SVGGElement, Node, unknown>, d: Node) => {
-        if (!isRunning && event.sourceEvent.button === 0) { // Left click and not running
+        if (!isRunning && event.sourceEvent.button === 0) {
           setIsDragging(true);
           setDragStartNode(d);
         }
@@ -207,20 +214,9 @@ export const GraphCanvas: React.FC = () => {
         if (isDragging && !isRunning) {
           const newX = event.x;
           const newY = event.y;
-
-          // Check for overlap with other nodes
-          const overlap = graph.nodes.some(node => {
-            if (node.id === d.id) return false;
-            const dx = node.x - newX;
-            const dy = node.y - newY;
-            return Math.sqrt(dx * dx + dy * dy) < getNodeSize(d) * 3;
-          });
-
-          if (!overlap) {
-            updateNodePosition(d.id, newX, newY);
-            d3.select(event.sourceEvent.target.parentNode)
-              .attr('transform', `translate(${newX},${newY})`);
-          }
+          updateNodePosition(d.id, newX, newY);
+          d3.select(event.sourceEvent.target.parentNode)
+            .attr('transform', `translate(${newX},${newY})`);
         } else if (isCreatingEdge && !isRunning) {
           setMousePosition({ x: event.x, y: event.y });
           dragLine
@@ -261,8 +257,8 @@ export const GraphCanvas: React.FC = () => {
           d3.select(this)
             .transition()
             .duration(200)
-            .attr('r', getNodeSize(d) * 1.2)
-            .style('filter', 'drop-shadow(0 0 3px rgba(0,0,0,0.3))');
+            .attr('r', getNodeSize(d) * 1.1)
+            .style('filter', 'drop-shadow(0 0 2px rgba(0,0,0,0.2))');
         }
       })
       .on('mouseout', function(this: SVGCircleElement, event: MouseEvent, d: Node) {

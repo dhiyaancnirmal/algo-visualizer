@@ -19,8 +19,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   algorithmHistory: [],
 
   generateRandomNodes: (count: number) => set((state) => {
-    const canvasWidth = 800;
-    const canvasHeight = 600;
+    const canvasWidth = 1000;
+    const canvasHeight = 800;
     const nodeRadius = 20;
     const padding = nodeRadius * 4;
     
@@ -289,18 +289,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
       // If this is the final step with the path, highlight it
       if (step.pathNodes.length > 0) {
-        // First reset all nodes to visited state
-        state.graph.nodes.forEach(node => {
-          if (node.id !== startNode.id && node.id !== endNode.id && !step.pathNodes.includes(node.id)) {
-            state.updateNodeState(node.id, {
-              isVisited: true,
-              isFrontier: false,
-              isPath: false
-            });
-          }
-        });
-
-        // Then highlight the path
+        // Keep visited nodes as visited, don't reset them
+        // Only update the path nodes
         for (let j = 0; j < step.pathNodes.length - 1; j++) {
           const currentId = step.pathNodes[j];
           const nextId = step.pathNodes[j + 1];

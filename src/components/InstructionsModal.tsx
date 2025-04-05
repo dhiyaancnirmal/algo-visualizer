@@ -9,50 +9,60 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ isOpen, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold dark:text-white">Instructions</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-3/4 max-w-2xl overflow-hidden">
+        <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+          <h2 className="text-xl font-bold dark:text-white">Welcome to Graph Algorithm Visualizer!</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
           >
-            ✕
+            ❌
           </button>
         </div>
-        
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold mb-2 dark:text-white">Graph Creation</h3>
-            <ul className="text-sm space-y-2 text-gray-600 dark:text-gray-300">
-              <li>• Double-click on the canvas to add nodes</li>
-              <li>• Click and drag nodes to move them</li>
-              <li>• Click and drag from one node to another to create edges</li>
-              <li>• Use the Set Start/End buttons to mark nodes</li>
-              <li>• Generate a random graph or build your own</li>
+        <div className="p-6 overflow-y-auto max-h-[70vh] space-y-6">
+          <section>
+            <h3 className="text-lg font-semibold mb-2 dark:text-white">Graph Creation</h3>
+            <ul className="list-disc pl-5 space-y-2 dark:text-gray-300">
+              <li>Double-click anywhere to add a node</li>
+              <li>Drag from one node to another to create an edge</li>
+              <li>Click and drag nodes to move them</li>
+              <li>Use the "Generate Random Graph" button to create a random graph</li>
+              <li>Adjust node count and edge density using the sliders</li>
             </ul>
-          </div>
+          </section>
 
-          <div>
-            <h3 className="font-semibold mb-2 dark:text-white">Algorithms</h3>
-            <ul className="text-sm space-y-2 text-gray-600 dark:text-gray-300">
-              <li>• BFS - Finds shortest path in unweighted graphs</li>
-              <li>• DFS - Explores paths to their deepest level first</li>
-              <li>• Dijkstra - Finds shortest path in weighted graphs</li>
-              <li>• A* - Similar to Dijkstra but uses heuristics</li>
+          <section>
+            <h3 className="text-lg font-semibold mb-2 dark:text-white">Setting Up</h3>
+            <ul className="list-disc pl-5 space-y-2 dark:text-gray-300">
+              <li>Click "Set Start" and select a node to set the starting point</li>
+              <li>Click "Set End" and select a node to set the destination</li>
+              <li>Toggle "Directed" for one-way edges</li>
+              <li>Toggle "Weighted" for weighted edges (required for Dijkstra and A*)</li>
             </ul>
-          </div>
+          </section>
 
-          <div>
-            <h3 className="font-semibold mb-2 dark:text-white">Visualization</h3>
-            <ul className="text-sm space-y-2 text-gray-600 dark:text-gray-300">
-              <li>• Green node - Start point</li>
-              <li>• Red node - End point</li>
-              <li>• Blue nodes - Frontier (next to visit)</li>
-              <li>• Purple nodes - Visited nodes</li>
-              <li>• Orange path - Shortest path found</li>
+          <section>
+            <h3 className="text-lg font-semibold mb-2 dark:text-white">Algorithms</h3>
+            <ul className="list-disc pl-5 space-y-2 dark:text-gray-300">
+              <li><strong>BFS (Breadth-First Search):</strong> Explores nodes level by level</li>
+              <li><strong>DFS (Depth-First Search):</strong> Explores as far as possible along each branch</li>
+              <li><strong>Dijkstra's Algorithm:</strong> Finds the shortest path in weighted graphs</li>
+              <li><strong>A* Search:</strong> Uses heuristics to find the shortest path more efficiently</li>
             </ul>
-          </div>
+          </section>
+
+          <section>
+            <h3 className="text-lg font-semibold mb-2 dark:text-white">Visualization</h3>
+            <ul className="list-disc pl-5 space-y-2 dark:text-gray-300">
+              <li>🟢 Green node: Start point</li>
+              <li>🔴 Red node: End point</li>
+              <li>🔵 Blue nodes: Frontier (next to be explored)</li>
+              <li>🟣 Purple nodes: Already visited</li>
+              <li>🟡 Orange nodes/edges: Final path</li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>
