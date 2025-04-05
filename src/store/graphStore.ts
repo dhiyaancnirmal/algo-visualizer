@@ -7,17 +7,112 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     nodes: [],
     edges: []
   },
-  selectedAlgorithm: 'BFS',
+  selectedAlgorithm: '',
   isDirected: false,
   isWeighted: false,
   isDarkMode: false,
   isRunning: false,
+  settingStartNode: false,
+  settingEndNode: false,
+  algorithmSteps: [],
+  currentStepIndex: -1,
+  algorithmHistory: [],
+
+  generateRandomNodes: (count: number) => set((state) => {
+    const canvasWidth = 800;
+    const canvasHeight = 600;
+    const nodeRadius = 20;
+    const padding = nodeRadius * 4;
+    
+    const newNodes: Node[] = [];
+    
+    // Create nodes in a grid layout
+    const gridSize = Math.ceil(Math.sqrt(count));
+    const cellWidth = (canvasWidth - 2 * padding) / gridSize;
+    const cellHeight = (canvasHeight - 2 * padding) / gridSize;
+    
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(i / gridSize);
+      const col = i % gridSize;
+      
+      // Calculate base position in grid
+      const baseX = padding + col * cellWidth + cellWidth / 2;
+      const baseY = padding + row * cellHeight + cellHeight / 2;
+      
+      // Add some random offset within the cell, but ensure it stays within bounds
+      const maxOffset = Math.min(cellWidth, cellHeight) * 0.3; // Reduced from 0.5 to 0.3
+      const offsetX = (Math.random() - 0.5) * maxOffset;
+      const offsetY = (Math.random() - 0.5) * maxOffset;
+      
+      newNodes.push({
+        id: `node-${i}`,
+        x: Math.min(canvasWidth - padding, Math.max(padding, baseX + offsetX)),
+        y: Math.min(canvasHeight - padding, Math.max(padding, baseY + offsetY)),
+        isStart: false,
+        isEnd: false,
+        isVisited: false,
+        isFrontier: false,
+        isPath: false
+      });
+    }
+    
+    return {
+      graph: {
+        nodes: newNodes,
+        edges: []  // Clear edges when generating new nodes
+      }
+    };
+  }),
+
+  generateRandomEdges: (count: number) => set((state) => {
+    const newEdges: Edge[] = [];
+    const existingEdges = new Set(
+      state.graph.edges.map(e => `${e.source}-${e.target}`)
+    );
+    
+    let attempts = 0;
+    const maxAttempts = count * 100;
+    
+    while (newEdges.length < count && attempts < maxAttempts) {
+      const sourceIndex = Math.floor(Math.random() * state.graph.nodes.length);
+      const targetIndex = Math.floor(Math.random() * state.graph.nodes.length);
+      
+      if (sourceIndex !== targetIndex) {
+        const source = state.graph.nodes[sourceIndex].id;
+        const target = state.graph.nodes[targetIndex].id;
+        const edgeKey = `${source}-${target}`;
+        const reverseEdgeKey = `${target}-${source}`;
+        
+        if (!existingEdges.has(edgeKey) && !existingEdges.has(reverseEdgeKey)) {
+          newEdges.push({
+            source,
+            target,
+            weight: state.isWeighted ? Math.floor(Math.random() * 9) + 1 : 1,
+            isDirected: state.isDirected,
+            isPath: false,
+            isVisited: false
+          });
+          existingEdges.add(edgeKey);
+        }
+      }
+      attempts++;
+    }
+    
+    return {
+      graph: {
+        ...state.graph,
+        edges: [...state.graph.edges, ...newEdges]
+      }
+    };
+  }),
 
   addNode: (x: number, y: number) => set((state) => {
     const newNode: Node = {
       id: `node-${state.graph.nodes.length}`,
       x,
-      y
+      y,
+      isStart: false,
+      isEnd: false
     };
     return {
       graph: {
@@ -115,21 +210,27 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       return;
     }
 
+    if (!state.selectedAlgorithm) {
+      alert('Please select an algorithm');
+      return;
+    }
+
     set({ isRunning: true });
 
     // Reset previous visualization states
     state.graph.nodes.forEach(node => {
-      if (!node.isStart && !node.isEnd) {
-        state.updateNodeState(node.id, {
-          isVisited: false,
-          isPath: false,
-          isFrontier: false
-        });
-      }
+      state.updateNodeState(node.id, {
+        isVisited: false,
+        isPath: false,
+        isFrontier: false
+      });
     });
 
     state.graph.edges.forEach(edge => {
-      state.updateEdgeState(edge.source, edge.target, { isPath: false });
+      state.updateEdgeState(edge.source, edge.target, { 
+        isPath: false,
+        isVisited: false 
+      });
     });
 
     let algorithmSteps: AlgorithmStep[];
@@ -150,31 +251,101 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         algorithmSteps = [];
     }
 
-    // Animate algorithm steps
-    for (const step of algorithmSteps) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+    set({ algorithmSteps });
 
+    // Animate algorithm steps
+    for (let i = 0; i < algorithmSteps.length; i++) {
+      const step = algorithmSteps[i];
+      set({ currentStepIndex: i });
+
+      // Mark edges as visited when they're explored
+      step.pathEdges.forEach(({ source, target }) => {
+        state.updateEdgeState(source, target, { 
+          isVisited: true,
+          isPath: false
+        });
+      });
+
+      // Mark nodes as visited or frontier
       step.visitedNodes.forEach(id => {
-        state.updateNodeState(id, { isVisited: true, isFrontier: false });
+        if (!step.pathNodes.includes(id) && id !== startNode.id && id !== endNode.id) {
+          state.updateNodeState(id, { 
+            isVisited: true, 
+            isFrontier: false,
+            isPath: false
+          });
+        }
       });
 
       step.frontierNodes.forEach(id => {
-        state.updateNodeState(id, { isFrontier: true });
+        if (!step.pathNodes.includes(id) && id !== startNode.id && id !== endNode.id) {
+          state.updateNodeState(id, { 
+            isFrontier: true,
+            isVisited: false,
+            isPath: false
+          });
+        }
       });
 
-      step.pathNodes.forEach(id => {
-        state.updateNodeState(id, { isPath: true });
-      });
+      // If this is the final step with the path, highlight it
+      if (step.pathNodes.length > 0) {
+        // First reset all nodes to visited state
+        state.graph.nodes.forEach(node => {
+          if (node.id !== startNode.id && node.id !== endNode.id && !step.pathNodes.includes(node.id)) {
+            state.updateNodeState(node.id, {
+              isVisited: true,
+              isFrontier: false,
+              isPath: false
+            });
+          }
+        });
 
-      step.pathEdges.forEach(({ source, target }) => {
-        state.updateEdgeState(source, target, { isPath: true });
-      });
+        // Then highlight the path
+        for (let j = 0; j < step.pathNodes.length - 1; j++) {
+          const currentId = step.pathNodes[j];
+          const nextId = step.pathNodes[j + 1];
+
+          // Update node state
+          if (currentId !== startNode.id && currentId !== endNode.id) {
+            state.updateNodeState(currentId, { 
+              isPath: true,
+              isVisited: false,
+              isFrontier: false
+            });
+          }
+
+          // Update edge state
+          state.graph.edges.forEach(edge => {
+            if ((edge.source === currentId && edge.target === nextId) ||
+                (edge.target === currentId && edge.source === nextId)) {
+              state.updateEdgeState(edge.source, edge.target, { 
+                isPath: true,
+                isVisited: false
+              });
+            }
+          });
+        }
+
+        // Update the last node in the path
+        const lastId = step.pathNodes[step.pathNodes.length - 1];
+        if (lastId !== startNode.id && lastId !== endNode.id) {
+          state.updateNodeState(lastId, { 
+            isPath: true,
+            isVisited: false,
+            isFrontier: false
+          });
+        }
+      }
+
+      // Wait for animation
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     set({ isRunning: false });
   },
 
   resetAlgorithm: () => set((state) => {
+    // Reset all node states
     const updatedNodes = state.graph.nodes.map(node => ({
       ...node,
       isVisited: false,
@@ -182,6 +353,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       isFrontier: false
     }));
 
+    // Reset all edge states
     const updatedEdges = state.graph.edges.map(edge => ({
       ...edge,
       isPath: false
@@ -191,7 +363,28 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       graph: {
         nodes: updatedNodes,
         edges: updatedEdges
-      }
+      },
+      currentStepIndex: -1,
+      algorithmSteps: []
     };
-  })
+  }),
+
+  updateNodePosition: (id: string, x: number, y: number) => set((state) => ({
+    graph: {
+      ...state.graph,
+      nodes: state.graph.nodes.map(node =>
+        node.id === id ? { ...node, x, y } : node
+      )
+    }
+  })),
+
+  setSettingStartNode: (value: boolean) => set(() => ({
+    settingStartNode: value,
+    settingEndNode: false
+  })),
+
+  setSettingEndNode: (value: boolean) => set(() => ({
+    settingEndNode: value,
+    settingStartNode: false
+  })),
 }));

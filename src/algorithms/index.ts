@@ -1,5 +1,26 @@
 import { Graph, AlgorithmStep } from '../types/graph';
 
+function buildPathStep(graph: Graph, parent: Map<string, string>, startId: string, endId: string): AlgorithmStep {
+  const pathNodes: string[] = [];
+  const pathEdges: Array<{ source: string; target: string }> = [];
+  let current = endId;
+
+  while (current !== startId && parent.has(current)) {
+    pathNodes.unshift(current);
+    const source = parent.get(current)!;
+    pathEdges.unshift({ source, target: current });
+    current = source;
+  }
+  pathNodes.unshift(startId);
+
+  return {
+    visitedNodes: [],
+    frontierNodes: [],
+    pathNodes,
+    pathEdges
+  };
+}
+
 export function runBFS(graph: Graph, startId: string, endId: string): AlgorithmStep[] {
   const steps: AlgorithmStep[] = [];
   const visited = new Set<string>();
@@ -8,31 +29,35 @@ export function runBFS(graph: Graph, startId: string, endId: string): AlgorithmS
 
   while (queue.length > 0) {
     const current = queue.shift()!;
-    visited.add(current);
+    
+    if (!visited.has(current)) {
+      visited.add(current);
 
-    if (current === endId) {
-      steps.push(buildPathStep(graph, parent, startId, endId));
-      break;
-    }
-
-    const neighbors = graph.edges
-      .filter(e => e.source === current || (!e.isDirected && e.target === current))
-      .map(e => e.source === current ? e.target : e.source)
-      .filter(n => !visited.has(n));
-
-    for (const neighbor of neighbors) {
-      if (!queue.includes(neighbor)) {
-        queue.push(neighbor);
-        parent.set(neighbor, current);
+      if (current === endId) {
+        steps.push(buildPathStep(graph, parent, startId, endId));
+        break;
       }
-    }
 
-    steps.push({
-      visitedNodes: Array.from(visited),
-      frontierNodes: queue,
-      pathNodes: [],
-      pathEdges: []
-    });
+      const neighbors = graph.edges
+        .filter(e => (e.source === current && !visited.has(e.target)) || 
+                    (!e.isDirected && e.target === current && !visited.has(e.source)))
+        .map(e => e.source === current ? e.target : e.source)
+        .filter(n => !queue.includes(n));
+
+      for (const neighbor of neighbors) {
+        queue.push(neighbor);
+        if (!parent.has(neighbor)) {
+          parent.set(neighbor, current);
+        }
+      }
+
+      steps.push({
+        visitedNodes: Array.from(visited),
+        frontierNodes: queue,
+        pathNodes: [],
+        pathEdges: Array.from(parent.entries()).map(([target, source]) => ({ source, target }))
+      });
+    }
   }
 
   return steps;
@@ -47,32 +72,36 @@ export function runDFS(graph: Graph, startId: string, endId: string): AlgorithmS
   while (stack.length > 0) {
     const current = stack.pop()!;
     
-    if (visited.has(current)) continue;
-    visited.add(current);
+    if (!visited.has(current)) {
+      visited.add(current);
 
-    if (current === endId) {
-      steps.push(buildPathStep(graph, parent, startId, endId));
-      break;
-    }
-
-    const neighbors = graph.edges
-      .filter(e => e.source === current || (!e.isDirected && e.target === current))
-      .map(e => e.source === current ? e.target : e.source)
-      .filter(n => !visited.has(n));
-
-    for (const neighbor of neighbors.reverse()) {
-      stack.push(neighbor);
-      if (!parent.has(neighbor)) {
-        parent.set(neighbor, current);
+      if (current === endId) {
+        steps.push(buildPathStep(graph, parent, startId, endId));
+        break;
       }
-    }
 
-    steps.push({
-      visitedNodes: Array.from(visited),
-      frontierNodes: stack,
-      pathNodes: [],
-      pathEdges: []
-    });
+      const neighbors = graph.edges
+        .filter(e => (e.source === current && !visited.has(e.target)) || 
+                    (!e.isDirected && e.target === current && !visited.has(e.source)))
+        .map(e => e.source === current ? e.target : e.source)
+        .reverse();
+
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          stack.push(neighbor);
+          if (!parent.has(neighbor)) {
+            parent.set(neighbor, current);
+          }
+        }
+      }
+
+      steps.push({
+        visitedNodes: Array.from(visited),
+        frontierNodes: stack,
+        pathNodes: [],
+        pathEdges: Array.from(parent.entries()).map(([target, source]) => ({ source, target }))
+      });
+    }
   }
 
   return steps;
@@ -102,21 +131,26 @@ export function runDijkstra(graph: Graph, startId: string, endId: string): Algor
       }
     });
 
-    if (current === null || current === endId) break;
+    if (current === null || current === endId) {
+      if (current === endId) {
+        steps.push(buildPathStep(graph, parent, startId, endId));
+      }
+      break;
+    }
 
     visited.add(current);
 
     // Update distances to neighbors
     const edges = graph.edges.filter(e => 
-      e.source === current || (!e.isDirected && e.target === current)
+      (e.source === current && !visited.has(e.target)) || 
+      (!e.isDirected && e.target === current && !visited.has(e.source))
     );
 
     for (const edge of edges) {
       const neighbor = edge.source === current ? edge.target : edge.source;
-      if (visited.has(neighbor)) continue;
-
       const newDist = distances.get(current)! + edge.weight;
-      if (newDist < distances.get(neighbor)!) {
+      
+      if (newDist < (distances.get(neighbor) || Infinity)) {
         distances.set(neighbor, newDist);
         parent.set(neighbor, current);
       }
@@ -128,12 +162,8 @@ export function runDijkstra(graph: Graph, startId: string, endId: string): Algor
         .filter(([id, dist]) => !visited.has(id) && dist < Infinity)
         .map(([id]) => id),
       pathNodes: [],
-      pathEdges: []
+      pathEdges: Array.from(parent.entries()).map(([target, source]) => ({ source, target }))
     });
-  }
-
-  if (parent.has(endId)) {
-    steps.push(buildPathStep(graph, parent, startId, endId));
   }
 
   return steps;
@@ -148,6 +178,7 @@ export function runAStar(graph: Graph, startId: string, endId: string): Algorith
   const gScore = new Map<string, number>();
   const fScore = new Map<string, number>();
   
+  // Initialize scores
   graph.nodes.forEach(node => {
     gScore.set(node.id, Infinity);
     fScore.set(node.id, Infinity);
@@ -168,77 +199,50 @@ export function runAStar(graph: Graph, startId: string, endId: string): Algorith
     closedSet.add(current);
 
     const neighbors = graph.edges
-      .filter(e => e.source === current || (!e.isDirected && e.target === current))
+      .filter(e => (e.source === current && !closedSet.has(e.target)) || 
+                  (!e.isDirected && e.target === current && !closedSet.has(e.source)))
       .map(e => e.source === current ? e.target : e.source);
 
     for (const neighbor of neighbors) {
-      if (closedSet.has(neighbor)) continue;
-
       const tentativeGScore = gScore.get(current)! + 1;
 
-      if (!openSet.has(neighbor)) {
-        openSet.add(neighbor);
-      } else if (tentativeGScore >= gScore.get(neighbor)!) {
-        continue;
+      if (tentativeGScore < (gScore.get(neighbor) || Infinity)) {
+        parent.set(neighbor, current);
+        gScore.set(neighbor, tentativeGScore);
+        fScore.set(neighbor, gScore.get(neighbor)! + heuristic(graph, neighbor, endId));
+        
+        if (!openSet.has(neighbor)) {
+          openSet.add(neighbor);
+        }
       }
-
-      parent.set(neighbor, current);
-      gScore.set(neighbor, tentativeGScore);
-      fScore.set(neighbor, gScore.get(neighbor)! + heuristic(graph, neighbor, endId));
     }
 
     steps.push({
       visitedNodes: Array.from(closedSet),
       frontierNodes: Array.from(openSet),
       pathNodes: [],
-      pathEdges: []
+      pathEdges: Array.from(parent.entries()).map(([target, source]) => ({ source, target }))
     });
   }
 
   return steps;
 }
 
-function buildPathStep(
-  graph: Graph,
-  parent: Map<string, string>,
-  startId: string,
-  endId: string
-): AlgorithmStep {
-  const pathNodes: string[] = [];
-  const pathEdges: Array<{ source: string; target: string }> = [];
-  
-  let current = endId;
-  while (current !== startId) {
-    const prev = parent.get(current)!;
-    pathNodes.push(current);
-    pathEdges.push({ source: prev, target: current });
-    current = prev;
-  }
-  pathNodes.push(startId);
-
-  return {
-    visitedNodes: [],
-    frontierNodes: [],
-    pathNodes,
-    pathEdges
-  };
-}
-
 function heuristic(graph: Graph, nodeId: string, endId: string): number {
-  const node = graph.nodes.find(n => n.id === nodeId)!;
-  const end = graph.nodes.find(n => n.id === endId)!;
+  const node = graph.nodes.find(n => n.id === nodeId);
+  const end = graph.nodes.find(n => n.id === endId);
   
-  return Math.sqrt(
-    Math.pow(end.x - node.x, 2) + Math.pow(end.y - node.y, 2)
-  );
+  if (!node || !end) return Infinity;
+  
+  return Math.sqrt(Math.pow(end.x - node.x, 2) + Math.pow(end.y - node.y, 2));
 }
 
 function getCheapestNode(nodes: Set<string>, fScore: Map<string, number>): string {
   let minScore = Infinity;
-  let cheapestNode = '';
+  let cheapestNode = Array.from(nodes)[0];
   
   nodes.forEach(nodeId => {
-    const score = fScore.get(nodeId)!;
+    const score = fScore.get(nodeId) || Infinity;
     if (score < minScore) {
       minScore = score;
       cheapestNode = nodeId;

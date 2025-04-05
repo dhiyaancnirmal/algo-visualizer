@@ -15,6 +15,7 @@ export interface Edge {
   weight: number;
   isDirected: boolean;
   isPath?: boolean;
+  isVisited?: boolean;
 }
 
 export interface Graph {
@@ -22,7 +23,14 @@ export interface Graph {
   edges: Edge[];
 }
 
-export type AlgorithmType = 'DFS' | 'BFS' | 'DIJKSTRA' | 'ASTAR';
+export type AlgorithmType = 'BFS' | 'DFS' | 'DIJKSTRA' | 'ASTAR' | '';
+
+export interface AlgorithmStep {
+  visitedNodes: string[];
+  frontierNodes: string[];
+  pathNodes: string[];
+  pathEdges: Array<{ source: string; target: string }>;
+}
 
 export interface GraphState {
   graph: Graph;
@@ -31,6 +39,10 @@ export interface GraphState {
   isWeighted: boolean;
   isDarkMode: boolean;
   isRunning: boolean;
+  settingStartNode: boolean;
+  settingEndNode: boolean;
+  algorithmSteps: AlgorithmStep[];
+  currentStepIndex: number;
   addNode: (x: number, y: number) => void;
   setStartNode: (id: string) => void;
   setEndNode: (id: string) => void;
@@ -44,11 +56,9 @@ export interface GraphState {
   resetAlgorithm: () => void;
   updateNodeState: (id: string, updates: Partial<Node>) => void;
   updateEdgeState: (source: string, target: string, updates: Partial<Edge>) => void;
-}
-
-export interface AlgorithmStep {
-  visitedNodes: string[];
-  frontierNodes: string[];
-  pathNodes: string[];
-  pathEdges: Array<{ source: string; target: string }>;
+  updateNodePosition: (id: string, x: number, y: number) => void;
+  setSettingStartNode: (value: boolean) => void;
+  setSettingEndNode: (value: boolean) => void;
+  generateRandomNodes: (count: number) => void;
+  generateRandomEdges: (count: number) => void;
 }
